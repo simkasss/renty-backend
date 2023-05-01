@@ -1,0 +1,1 @@
+// This contract will use Civic to verify the identities of the owners and tenants who sign up for the platform.
