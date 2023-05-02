@@ -18,7 +18,6 @@ contract RentApp {
     address public constant admin;
 
     enum PropertyStatus {
-        // Applied? Figure a good status
         Rented,
         Vacant
     }
@@ -29,7 +28,7 @@ contract RentApp {
     }
 
     struct Property {
-        uint256 id;
+        uint256 propertyNftId;
         address owner;
         string name;
         string description;
@@ -40,14 +39,12 @@ contract RentApp {
         PropertyStatus status;
     }
     struct Tenant {
-        // Should be Soulbound NFT id
-        uint256 id;
-        string name; // Remove the name as it lives on the SB NFT
+        uint256 sbtId; //address lives on the SBT
+        string name;
         RentApplication[] rentHistory;
     }
-
     struct RentApplication {
-        uint256 id;
+        uint256 rentApplicationId;
         Property property;
         Tenant tenant;
         string rentalTerm;
@@ -55,7 +52,7 @@ contract RentApp {
         uint256 amountOfDeposit;
         string startDate;
         uint256 daysOfApplicationValidity;
-        ApplicationStatus applicationStatus;
+        TenantApplicationStatus applicationStatus;
     }
 
     uint256 public numberOfProperties;
@@ -90,7 +87,7 @@ contract RentApp {
       3. Create SoulboundToken (for tenants) ✓
       4. List a property (for owners) ✓
       5. Create rent application (for tenants) ✓
-      6. Accept rent application (for owners) ✓
+      6. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
       7. Transfer Security deposit (for tenants)
       8. Pay rent (for tenants)
       9. Withdraw rent (for owners)
@@ -99,6 +96,8 @@ contract RentApp {
       12. Update soulbound token (automatically)
       13. Release deposit (automatically)
       */
+     
+     // didnt used it
     modifier onlyAdmin() {
         if (admin != msg.sender) {
             revert RentApp__NotAdmin(admin, msg.sender);
@@ -123,17 +122,17 @@ contract RentApp {
         }
     }
 
-    function mintPropertyNFT(address _owner, string memory _tokenUri) public onlyAdmin returns (uint256) {
-       uint256 tokenId = propertyNFT.mintNft(_owner, _tokenUri); //This function should return tokenId
+    function mintPropertyNFT(string memory _tokenUri) public returns (uint256) {
+       uint256 tokenId = propertyNFT.mintNft(msg.sender, _tokenUri); //This function should return tokenId
         //How can we get nftaddress?
-        nftTokenIdToOwner[tokenId] = _owner;
-        emit PropertyNFTminted(_owner, tokenId);
+        nftTokenIdToOwner[tokenId] = msg.sender;
+        emit PropertyNFTminted(msg.sender, tokenId);
         return tokenId;
     }
 
     function listProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
         Property storage property = tokenIdToProperty[_tokenId];
-        property.id = _tokenId;
+        property.propertyNftId = _tokenId;
         property.owner = msg.sender;
         property.name = _name;
         property.description = _description;
@@ -146,15 +145,14 @@ contract RentApp {
         emit PropertyListed(msg.sender, _tokenId);
     }
     
-    function mintSoulboundToken(string memory _name) external onlyOneSBT {
-        uint256 tokenId = soulboundToken.safeMint(msg.sender); //This function should return tokenId
+    function mintSoulboundToken(string memory _name, string memory _tokenUri) external onlyOneSBT {
+        uint256 tokenId = soulboundToken.mintSBT(msg.sender, _tokenUri) ; //This function should return tokenId
         //How can we get nftaddress?
         soulboundTokenIdToOwner[tokenId] = msg.sender;
         Tenant storage tenant = tokenIdToTenant[tokenId];
-        tenant.id = tokenId;
-        tenant.tenant = msg.sender;
+        tenant.sbtId = tokenId;
         tenant.name = _name;
-        tenant.history = [];
+        tenant.rentHistory = [];
         numberOfTenants++;
         ownsTSBT[msg.sender] = true;
         emit SoulboundMinted(msg.sender, tokenId);
@@ -163,7 +161,7 @@ contract RentApp {
     function createRentApplication(uint256 _nftTokenId, uint256 _tenantTokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _startDate, uint256 _days ) external onlyTSBTOwner(_tenantTokenId) {
         uint256 applicationId = numberOfApplications;
         RentApplication storage rentApplication = applicationIdToApplication[applicationId]
-        rentApplication.id = applicationId;
+        rentApplication.rentApplicationId = applicationId;
         rentApplication.property = tokenIdToProperty[_nftTokenId];
        rentApplication.tenant = tokenIdToTenant[_tenantTokenId];
         rentApplication.rentalTerm = _rentalTerm;
@@ -171,14 +169,14 @@ contract RentApp {
         rentApplication.amountOfDeposit = _amountOfDeposit;
        rentApplication.startDate = _startDate;
         rentApplication.daysOfApplicationValidity = _days;
-        rentApplication.applicationStatus = ApplicationStatus.Waiting;
+        rentApplication.applicationStatus = TenantApplicationStatus.Waiting;
         numberOfApplications++;
         emit RentApplicationCreated(_tenantTokenId, applicationId);
     }
-    function acceptRentApplication(uint256 _propertyTokenId, uint256 _applicationId) external onlyPropertyOwner(_tokenId){
-        applicationIdToApplication[_applicationId].applicationStatus = ApplicationStatus.Confirmed;
-        tokenIdToProperty[_propertyTokenId].status = PropertyStatus.Rented;
-        emit RentApplicationConfirmed(_tokenId, _applicationId);
+    function acceptRentApplication(uint256 _propertyNftId, uint256 _rentApplicationId) external onlyPropertyOwner(_tokenId){
+        applicationIdToApplication[_rentApplicationId].applicationStatus = TenantApplicationStatus.Confirmed;
+        tokenIdToProperty[_propertyNftId].status = PropertyStatus.Rented;
+        emit RentApplicationConfirmed(_propertyNftId, _rentApplicationId);
     }
 
 
