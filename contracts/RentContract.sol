@@ -14,6 +14,7 @@ error RentApp__NotEnoughDeposit();
 error RentApp__NotEnoughRentalPrice();
 error RentApp__NoProceeds();
 error RentApp__WithdrawFailed();
+error RentApp__TerminationFailed();
 
 contract RentApp {
     PropertyNft public propertyNFT;
@@ -86,6 +87,8 @@ contract RentApp {
 mapping(uint256 => uint256) private nftTokenIdToDeposit;
     mapping(uint256 => uint256) private nftTokenIdToBalance;
 
+    mapping(uint256 => bool) private applicationIdHasDisputes;
+
     constructor(address propertyNftAddress, address soulboundTokenAddress) {
         nftContractAddress = propertyNftAddress;
         propertyNFT = PropertyNft(nftContractAddress);
@@ -103,13 +106,16 @@ mapping(uint256 => uint256) private nftTokenIdToDeposit;
       5.1 Delete a property (for owners) ✓
       6. Create rent application (for tenants) ✓
       7. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
+        // Rental agreement is valid for a year from a start date (if not renewed)
       8. Transfer Security deposit (for tenants) ✓
       9. Pay rent (for tenants) ✓
       10. Withdraw rent (for owners) ✓
-      11. Terminate agreement (for owners or tenants)
+      11. Terminate agreement (for owners or tenants) // dispute is created 
       12. Request for renewal (for tenants)
       13. Update soulbound token (automatically)
-      14. Release deposit (automatically)
+      14. Create dispute (for owners or tenants) 
+      15. Close dispute (for owners or tenants) // both have to call this func. to close a dispute
+      16. Release deposit (automatically)
 
       */
 
@@ -244,6 +250,22 @@ emit PropertyDeleted(msg.sender, _propertyNftId);
             revert RentApp__WithdrawFailed();
         }
     }
+
+    function terminateAgreement(uint256 _propertyNftId, uint256 _tenantTokenId, uint256 _rentApplicationId) external {
+        if (msg.sender == nftTokenIdToOwner[_propertyNftId] || msg.sender == soulboundTokenIdToOwner[_tenantTokenId] ) {
+        if(_tenantTokenId == applicationIdToApplication[_rentApplicationId].tenant.sbtId) {
+        applicationIdToApplication[_rentApplicationId].applicationStatus = TenantApplicationStatus.Canceled;
+        tokenIdToProperty[_propertyNftId].status = PropertyStatus.Vacant;
+        applicationIdHasDisputes[_rentApplicationId] = true; // automatically created dispute
+        // implementation of tenant rent history update:
+        tokenIdToTenant[_tenantTokenId].rentHistory.push(applicationIdToApplication[_rentApplicationId])
+        //should I add ,,ended with unclosed dispute" to application properties?
+        }
+        } else {
+            revert RentApp__TerminationFailed(msg.sender, _propertyNftId)};
+    }
+
+
 
     }
 
