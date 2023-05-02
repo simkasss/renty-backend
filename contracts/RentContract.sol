@@ -64,6 +64,7 @@ contract RentApp {
 
     event PropertyListed(address indexed owner, uint256 indexed tokenId)
      event PropertyUpdated(address indexed owner, uint256 indexed tokenId)
+      event PropertyDeleted(address indexed owner, uint256 indexed tokenId)
     event PropertyNFTminted(address indexed owner, uint256 indexed tokenId)
     event SoulboundMinted(address indexed tenant, uint256 indexed tokenId)
     event RentApplicationCreated(uint256 indexed _tenantTokenId, uint256 indexed applicationId)
@@ -94,6 +95,7 @@ contract RentApp {
       3. Create SoulboundToken (for tenants) ✓
       4. List a property (for owners) ✓
       5. Update a property (for owners) ✓
+      5.1 Delete a property (for owners) ✓
       6. Create rent application (for tenants) ✓
       7. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
       8. Transfer Security deposit (for tenants) ✓
@@ -103,6 +105,7 @@ contract RentApp {
       12. Request for renewal (for tenants)
       13. Update soulbound token (automatically)
       14. Release deposit (automatically)
+
       */
 
      // didnt use it
@@ -160,6 +163,10 @@ contract RentApp {
          tokenIdToProperty[_tokenId].amountOfDeposit = _amountOfDeposit;
         tokenIdToProperty[_tokenId].hashOfRentalAggreement = _hash;
         emit PropertyUpdated(msg.sender, _tokenId);
+    }
+    function deleteProperty(uint256 _tokenId) external onlyPropertyOwner(_tokenId) {
+delete (tokenIdToProperty[_tokenId])
+emit PropertyDeleted(msg.sender, _tokenId);
     }
     
     function mintSoulboundToken(string memory _name, string memory _tokenUri) external onlyOneSBT {
