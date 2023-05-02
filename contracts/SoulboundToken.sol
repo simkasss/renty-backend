@@ -9,14 +9,19 @@ error SoulboundToken__CantBeTransferred();
 
 contract SoulboundToken is ERC721, Ownable {
     uint256 private s_tokenCounter;
+    mapping(uint256 => address) private tokenIdToOwner;
+    event SBTMinted(address minter, uint256 tokenId);
 
     constructor() ERC721("TenantSoulboundToken", "TSBT") {}
 
-    function safeMint(address to) public {
+    function mintSBT(address owner, string memory tokenUri) public returns (uint256) {
         uint256 tokenId = s_tokenCounter;
+        _safeMint(owner, tokenId);
+        _setTokenURI(tokenId, tokenUri);
+        tokenIdToOwner[tokenId] = owner;
+        emit SBTMinted(owner, tokenId);
         s_tokenCounter++;
-        _safeMint(to, tokenId);
-        // Should include tokenUri which contains the name of a human being
+        return tokenId;
     }
 
     function burn(uint256 tokenId) external {
