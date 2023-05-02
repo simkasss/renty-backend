@@ -11,6 +11,7 @@ error RentApp__NotAdmin(address admin, address _admin);
 error RentApp__NotOwner(address caller, uint256 tokenId);
 error RentApp__ApplicationNotConfirmed(uint256 rentApplicationId);
 error RentApp__NotEnoughDeposit();
+error RentApp__NotEnoughRentalPrice();
 
 contract RentApp {
     PropertyNft public propertyNFT;
@@ -35,7 +36,7 @@ contract RentApp {
         string name;
         string description;
         string rentalTerm;
-        uint256 rentPrice;
+        uint256 rentalPrice;
         uint256 amountOfDeposit;
         string hashOfRentalAggreement;
         PropertyStatus status;
@@ -51,7 +52,7 @@ contract RentApp {
         Property property;
         Tenant tenant;
         string rentalTerm;
-        uint256 rentPrice;
+        uint256 rentalPrice;
         uint256 amountOfDeposit;
         string startDate;
         uint256 daysOfApplicationValidity;
@@ -70,6 +71,7 @@ contract RentApp {
     event RentApplicationCreated(uint256 indexed _tenantTokenId, uint256 indexed applicationId)
     event RentApplicationConfirmed(uint256 indexed _propertyTokenId, uint256 indexed _applicationId)
     event SecurityDepositTransfered(uint256 indexed propertyNftId, uint256 indexed rentApplicationId)
+    event RentPriceTransfered(uint256 indexed propertyNftId, uint256 indexed rentApplicationId)
 
     mapping(uint256 => address) private nftTokenIdToOwner; //tokenId => Owner
     mapping(uint256 => address) private soulboundTokenIdToOwner; //tokenId => Owner
@@ -99,7 +101,7 @@ contract RentApp {
       6. Create rent application (for tenants) ✓
       7. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
       8. Transfer Security deposit (for tenants) ✓
-      9. Pay rent (for tenants)
+      9. Pay rent (for tenants) 
       10. Withdraw rent (for owners)
       11. Terminate agreement (for owners or tenants)
       12. Request for renewal (for tenants)
@@ -141,14 +143,14 @@ contract RentApp {
         return tokenId;
     }
 
-    function listProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
+    function listProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentalPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
         Property storage property = tokenIdToProperty[_tokenId];
         property.propertyNftId = _tokenId;
         property.owner = msg.sender;
         property.name = _name;
         property.description = _description;
         property.rentalTerm = _rentalTerm;
-        property.rentPrice = _rentPrice;
+        property.rentalPrice = _rentalPrice;
         property.amountOfDeposit = _amountOfDeposit;
         property.hashOfRentalAggreement = _hash;
         property.status = PropertyStatus.Vacant;
@@ -182,14 +184,14 @@ emit PropertyDeleted(msg.sender, _tokenId);
         emit SoulboundMinted(msg.sender, tokenId);
         return tokenId;
     }
-    function createRentApplication(uint256 _nftTokenId, uint256 _tenantTokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _startDate, uint256 _days ) external onlyTSBTOwner(_tenantTokenId) {
+    function createRentApplication(uint256 _nftTokenId, uint256 _tenantTokenId, string memory _rentalTerm, uint256 _rentalPrice, uint256 _amountOfDeposit, string memory _startDate, uint256 _days ) external onlyTSBTOwner(_tenantTokenId) {
         uint256 applicationId = numberOfApplications;
         RentApplication storage rentApplication = applicationIdToApplication[applicationId]
         rentApplication.rentApplicationId = applicationId;
         rentApplication.property = tokenIdToProperty[_nftTokenId];
        rentApplication.tenant = tokenIdToTenant[_tenantTokenId];
         rentApplication.rentalTerm = _rentalTerm;
-        rentApplication.rentPrice = _rentPrice;
+        rentApplication.rentalPrice = _rentalPrice;
         rentApplication.amountOfDeposit = _amountOfDeposit;
        rentApplication.startDate = _startDate;
         rentApplication.daysOfApplicationValidity = _days; // How to write a code, that after these days status would change? chainlink keepers would cost
@@ -216,6 +218,17 @@ emit PropertyDeleted(msg.sender, _tokenId);
     nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
     emit SecurityDepositTransfered(_propertyNftId, _rentApplicationId);
     } 
+
+    function transferRent(uint256 _propertyNftId, uint256 _rentApplicationId) external payable {
+        if (applicationIdToApplication[_rentApplicationId].applicationStatus != TenantApplicationStatus.Confirmed || tokenIdToProperty[_propertyNftId].status != PropertyStatus.Rented) {
+            revert RentApp__ApplicationNotConfirmed(_rentApplicationId);
+        }
+        if (msg.value < applicationIdToApplication[_rentApplicationId].rentalPrice) {
+            revert RentApp__NotEnoughRentalPrice();
+    }
+    nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
+    emit RentPriceTransfered(_propertyNftId, _rentApplicationId);
+    } // If the balance is not enough in the end of the month, a owner should be informed
 
     }
 
