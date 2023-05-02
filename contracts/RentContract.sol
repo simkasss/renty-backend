@@ -18,10 +18,11 @@ contract RentApp {
     address public constant admin;
 
     enum PropertyStatus {
+        // Applied? Figure a good status
         Rented,
         Vacant
     }
-    enum ApplicationStatus {
+    enum TenantApplicationStatus {
         Waiting,
         Confirmed,
         Canceled
@@ -39,11 +40,12 @@ contract RentApp {
         PropertyStatus status;
     }
     struct Tenant {
+        // Should be Soulbound NFT id
         uint256 id;
-        address tenant;
-        string name;
-        string[] history;
+        string name; // Remove the name as it lives on the SB NFT
+        RentApplication[] rentHistory;
     }
+
     struct RentApplication {
         uint256 id;
         Property property;

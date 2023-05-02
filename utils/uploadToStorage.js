@@ -24,10 +24,13 @@ async function uploadToStorage(imagesPath, name, address) {
     const image = await fileFromPath(imagesPath)
     // call client.store, passing in the image & metadata
     const nft = {
-        image,
         name,
         address,
+        // Country code - LT
+        // Custom - if LT, tai registrų centro objekto numeris
     }
+
+    
     const metadata = await nftstorage.store(nft)
     console.log("NFT data stored!")
     console.log("Metadata URI: ", metadata.url)

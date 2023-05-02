@@ -16,6 +16,7 @@ contract SoulboundToken is ERC721, Ownable {
         uint256 tokenId = s_tokenCounter;
         s_tokenCounter++;
         _safeMint(to, tokenId);
+        // Should include tokenUri which contains the name of a human being
     }
 
     function burn(uint256 tokenId) external {
