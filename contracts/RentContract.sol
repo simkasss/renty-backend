@@ -63,6 +63,7 @@ contract RentApp {
     uint256 public numberOfApplications;
 
     event PropertyListed(address indexed owner, uint256 indexed tokenId)
+     event PropertyUpdated(address indexed owner, uint256 indexed tokenId)
     event PropertyNFTminted(address indexed owner, uint256 indexed tokenId)
     event SoulboundMinted(address indexed tenant, uint256 indexed tokenId)
     event RentApplicationCreated(uint256 indexed _tenantTokenId, uint256 indexed applicationId)
@@ -92,15 +93,16 @@ contract RentApp {
       2. Mint property's NFT  ✓
       3. Create SoulboundToken (for tenants) ✓
       4. List a property (for owners) ✓
-      5. Create rent application (for tenants) ✓
-      6. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
-      7. Transfer Security deposit (for tenants)
-      8. Pay rent (for tenants)
-      9. Withdraw rent (for owners)
-      10. Terminate agreement (for owners or tenants)
-      11. Request for renewal (for tenants)
-      12. Update soulbound token (automatically)
-      13. Release deposit (automatically)
+      5. Update a property (for owners) ✓
+      6. Create rent application (for tenants) ✓
+      7. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
+      8. Transfer Security deposit (for tenants) ✓
+      9. Pay rent (for tenants)
+      10. Withdraw rent (for owners)
+      11. Terminate agreement (for owners or tenants)
+      12. Request for renewal (for tenants)
+      13. Update soulbound token (automatically)
+      14. Release deposit (automatically)
       */
 
      // didnt use it
@@ -150,6 +152,15 @@ contract RentApp {
         numberOfProperties++;
         emit PropertyListed(msg.sender, _tokenId);
     }
+    function updateProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
+         tokenIdToProperty[_tokenId].name = _name;
+        tokenIdToProperty[_tokenId].description = _description;
+         tokenIdToProperty[_tokenId].rentalTerm = _rentalTerm;
+         tokenIdToProperty[_tokenId].rentPrice = _rentPrice;
+         tokenIdToProperty[_tokenId].amountOfDeposit = _amountOfDeposit;
+        tokenIdToProperty[_tokenId].hashOfRentalAggreement = _hash;
+        emit PropertyUpdated(msg.sender, _tokenId);
+    }
     
     function mintSoulboundToken(string memory _name, string memory _tokenUri) external onlyOneSBT {
         uint256 tokenId = soulboundToken.mintSBT(msg.sender, _tokenUri) ; //This function should return tokenId
@@ -185,6 +196,7 @@ contract RentApp {
         tokenIdToProperty[_propertyNftId].tenant = applicationIdToApplication[_rentApplicationId].tenant;
         emit RentApplicationConfirmed(_propertyNftId, _rentApplicationId);
     }  // ALL OTHER APPLICATONS SHOULD BE CANCELED
+    // SECURITY DEPOSIT MUST BE TRANSFERED IN 5 DAYS AFTER CONFIRMATION, ELSE APPLICATION STATUS IS CANCELED
     // should I loop throw applicationIds and cancel them one by one?
 
     function transferSecurityDeposit(uint256 _propertyNftId, uint256 _rentApplicationId) external payable {
@@ -196,10 +208,8 @@ contract RentApp {
     }
     nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
     emit SecurityDepositTransfered(_propertyNftId, _rentApplicationId);
+    } 
 
-
-
-    }
     }
 
 
