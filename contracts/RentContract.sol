@@ -12,6 +12,8 @@ error RentApp__NotOwner(address caller, uint256 tokenId);
 error RentApp__ApplicationNotConfirmed(uint256 rentApplicationId);
 error RentApp__NotEnoughDeposit();
 error RentApp__NotEnoughRentalPrice();
+error RentApp__NoProceeds();
+error RentApp__WithdrawFailed();
 
 contract RentApp {
     PropertyNft public propertyNFT;
@@ -81,6 +83,7 @@ contract RentApp {
     mapping(uint256 => RentApplication) private applicationIdToApplication;
     mapping(uint256 => RentApplication[]) private nftTokenIdToApplications;
 
+mapping(uint256 => uint256) private nftTokenIdToDeposit;
     mapping(uint256 => uint256) private nftTokenIdToBalance;
 
     constructor(address propertyNftAddress, address soulboundTokenAddress) {
@@ -101,8 +104,8 @@ contract RentApp {
       6. Create rent application (for tenants) ✓
       7. Accept rent application (for owners) ✓ // ALL OTHER APPLICATONS SHOULD BE CANCELED
       8. Transfer Security deposit (for tenants) ✓
-      9. Pay rent (for tenants) 
-      10. Withdraw rent (for owners)
+      9. Pay rent (for tenants) ✓
+      10. Withdraw rent (for owners) ✓
       11. Terminate agreement (for owners or tenants)
       12. Request for renewal (for tenants)
       13. Update soulbound token (automatically)
@@ -117,9 +120,9 @@ contract RentApp {
         }
         _;
     }
-    modifier onlyPropertyOwner(uint256 _tokenId) {
-        if (msg.sender != nftTokenIdToOwner[_tokenId]) {
-            revert RentApp__NotOwner(msg.sender, _tokenId);
+    modifier onlyPropertyOwner(uint256 _propertyNftId) {
+        if (msg.sender != nftTokenIdToOwner[_propertyNftId]) {
+            revert RentApp__NotOwner(msg.sender, _propertyNftId);
         }
         _;
     }
@@ -143,9 +146,9 @@ contract RentApp {
         return tokenId;
     }
 
-    function listProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentalPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
-        Property storage property = tokenIdToProperty[_tokenId];
-        property.propertyNftId = _tokenId;
+    function listProperty(string memory _name, string memory _description, uint256 _propertyNftId, string memory _rentalTerm, uint256 _rentalPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_propertyNftId)  {
+        Property storage property = tokenIdToProperty[_propertyNftId];
+        property.propertyNftId = _propertyNftId;
         property.owner = msg.sender;
         property.name = _name;
         property.description = _description;
@@ -157,7 +160,7 @@ contract RentApp {
         numberOfProperties++;
         emit PropertyListed(msg.sender, _tokenId);
     }
-    function updateProperty(string memory _name, string memory _description, uint256 _tokenId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_tokenId)  {
+    function updateProperty(string memory _name, string memory _description, uint256 _propertyNftId, string memory _rentalTerm, uint256 _rentPrice, uint256 _amountOfDeposit, string memory _hash) external onlyPropertyOwner(_propertyNftId)  {
          tokenIdToProperty[_tokenId].name = _name;
         tokenIdToProperty[_tokenId].description = _description;
          tokenIdToProperty[_tokenId].rentalTerm = _rentalTerm;
@@ -166,9 +169,9 @@ contract RentApp {
         tokenIdToProperty[_tokenId].hashOfRentalAggreement = _hash;
         emit PropertyUpdated(msg.sender, _tokenId);
     }
-    function deleteProperty(uint256 _tokenId) external onlyPropertyOwner(_tokenId) {
-delete (tokenIdToProperty[_tokenId])
-emit PropertyDeleted(msg.sender, _tokenId);
+    function deleteProperty(uint256 _propertyNftId) external onlyPropertyOwner(_propertyNftId) {
+delete (tokenIdToProperty[_propertyNftId])
+emit PropertyDeleted(msg.sender, _propertyNftId);
     }
     
     function mintSoulboundToken(string memory _name, string memory _tokenUri) external onlyOneSBT {
@@ -199,7 +202,7 @@ emit PropertyDeleted(msg.sender, _tokenId);
         numberOfApplications++;
         emit RentApplicationCreated(_tenantTokenId, applicationId);
     }
-    function acceptRentApplication(uint256 _propertyNftId, uint256 _rentApplicationId) external onlyPropertyOwner(_tokenId){
+    function acceptRentApplication(uint256 _propertyNftId, uint256 _rentApplicationId) external onlyPropertyOwner(_propertyNftId){
         applicationIdToApplication[_rentApplicationId].applicationStatus = TenantApplicationStatus.Confirmed;
         tokenIdToProperty[_propertyNftId].status = PropertyStatus.Rented;
         tokenIdToProperty[_propertyNftId].tenant = applicationIdToApplication[_rentApplicationId].tenant;
@@ -215,7 +218,7 @@ emit PropertyDeleted(msg.sender, _tokenId);
         if (msg.value < applicationIdToApplication[_rentApplicationId].amountOfDeposit) {
             revert RentApp__NotEnoughDeposit();
     }
-    nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
+    nftTokenIdToDeposit[_propertyNftId] = nftTokenIdToDeposit[_propertyNftId] + msg.value;
     emit SecurityDepositTransfered(_propertyNftId, _rentApplicationId);
     } 
 
@@ -229,6 +232,18 @@ emit PropertyDeleted(msg.sender, _tokenId);
     nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
     emit RentPriceTransfered(_propertyNftId, _rentApplicationId);
     } // If the balance is not enough in the end of the month, a owner should be informed
+
+    function withdrawProceeds(uint256 _propertyNftId) external onlyPropertyOwner(_propertyNftId) {
+        uint256 proceeds = nftTokenIdToBalance[_propertyNftId];
+        if(proceeds <= 0) {
+            revert RentApp__NoProceeds();
+        }
+        nftTokenIdToBalance[_propertyNftId] = 0;
+        (bool success, ) = payable(msg.sender).call{value: proceeds}("");
+        if(!success){
+            revert RentApp__WithdrawFailed();
+        }
+    }
 
     }
 
