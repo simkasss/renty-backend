@@ -8,7 +8,9 @@ import "./PropertyNft.sol";
 import "./SoulboundToken.sol";
 
 error RentApp__NotAdmin(address admin, address _admin);
-error RentApp__NotOwner(address caller, uint256 tokenId)
+error RentApp__NotOwner(address caller, uint256 tokenId);
+error RentApp__ApplicationNotConfirmed(uint256 rentApplicationId);
+error RentApp__NotEnoughDeposit();
 
 contract RentApp {
     PropertyNft public propertyNFT;
@@ -37,6 +39,7 @@ contract RentApp {
         uint256 amountOfDeposit;
         string hashOfRentalAggreement;
         PropertyStatus status;
+        Tenant tenant;
     }
     struct Tenant {
         uint256 sbtId; //address lives on the SBT
@@ -64,6 +67,7 @@ contract RentApp {
     event SoulboundMinted(address indexed tenant, uint256 indexed tokenId)
     event RentApplicationCreated(uint256 indexed _tenantTokenId, uint256 indexed applicationId)
     event RentApplicationConfirmed(uint256 indexed _propertyTokenId, uint256 indexed _applicationId)
+    event SecurityDepositTransfered(uint256 indexed propertyNftId, uint256 indexed rentApplicationId)
 
     mapping(uint256 => address) private nftTokenIdToOwner; //tokenId => Owner
     mapping(uint256 => address) private soulboundTokenIdToOwner; //tokenId => Owner
@@ -72,6 +76,8 @@ contract RentApp {
     mapping(address => bool) private ownsTSBT;
     mapping(uint256 => RentApplication) private applicationIdToApplication;
     mapping(uint256 => RentApplication[]) private nftTokenIdToApplications;
+
+    mapping(uint256 => uint256) private nftTokenIdToBalance;
 
     constructor(address propertyNftAddress, address soulboundTokenAddress) {
         nftContractAddress = propertyNftAddress;
@@ -83,7 +89,7 @@ contract RentApp {
 
     /* Main Functions
       1. Request for property's NFT (for owners)   HOW TO IMPLEMENT?
-      2. Mint property's NFT (for admin) ✓
+      2. Mint property's NFT  ✓
       3. Create SoulboundToken (for tenants) ✓
       4. List a property (for owners) ✓
       5. Create rent application (for tenants) ✓
@@ -96,8 +102,8 @@ contract RentApp {
       12. Update soulbound token (automatically)
       13. Release deposit (automatically)
       */
-     
-     // didnt used it
+
+     // didnt use it
     modifier onlyAdmin() {
         if (admin != msg.sender) {
             revert RentApp__NotAdmin(admin, msg.sender);
@@ -168,7 +174,7 @@ contract RentApp {
         rentApplication.rentPrice = _rentPrice;
         rentApplication.amountOfDeposit = _amountOfDeposit;
        rentApplication.startDate = _startDate;
-        rentApplication.daysOfApplicationValidity = _days;
+        rentApplication.daysOfApplicationValidity = _days; // How to write a code, that after these days status would change? chainlink keepers would cost
         rentApplication.applicationStatus = TenantApplicationStatus.Waiting;
         numberOfApplications++;
         emit RentApplicationCreated(_tenantTokenId, applicationId);
@@ -176,10 +182,24 @@ contract RentApp {
     function acceptRentApplication(uint256 _propertyNftId, uint256 _rentApplicationId) external onlyPropertyOwner(_tokenId){
         applicationIdToApplication[_rentApplicationId].applicationStatus = TenantApplicationStatus.Confirmed;
         tokenIdToProperty[_propertyNftId].status = PropertyStatus.Rented;
+        tokenIdToProperty[_propertyNftId].tenant = applicationIdToApplication[_rentApplicationId].tenant;
         emit RentApplicationConfirmed(_propertyNftId, _rentApplicationId);
+    }  // ALL OTHER APPLICATONS SHOULD BE CANCELED
+    // should I loop throw applicationIds and cancel them one by one?
+
+    function transferSecurityDeposit(uint256 _propertyNftId, uint256 _rentApplicationId) external payable {
+        if (applicationIdToApplication[_rentApplicationId].applicationStatus != TenantApplicationStatus.Confirmed || tokenIdToProperty[_propertyNftId].status != PropertyStatus.Rented) {
+            revert RentApp__ApplicationNotConfirmed(_rentApplicationId);
+        }
+        if (msg.value < applicationIdToApplication[_rentApplicationId].amountOfDeposit) {
+            revert RentApp__NotEnoughDeposit();
     }
+    nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
+    emit SecurityDepositTransfered(_propertyNftId, _rentApplicationId);
 
 
+
+    }
     }
 
 
