@@ -1,7 +1,7 @@
 const { network, getNamedAccounts, deployments } = require("hardhat")
 const { developmentChains } = require("../helper-hardhat-config")
 const { verify } = require("../utils/verify")
-const { uploadToStorage } = require("../utils/uploadToStorage")
+const { uploadPropertyNftToStorage } = require("../utils/uploadToStorage")
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deploy, log } = deployments
@@ -20,7 +20,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         await verify(propertyNft.address, args)
     }
 
-    // const result = await uploadToStorage("utils/house.jpeg", "name", "address")
+    // const result = await uploadPropertyNftToStorage("name", "address", "LT")
     // console.log(result) //returns TokenURI. We need this URI to mint NFT
 }
-module.exports.tags = ["nft"]
+module.exports.tags = ["propertyNft"]

@@ -1,7 +1,7 @@
 const { network, getNamedAccounts, deployments } = require("hardhat")
 const { developmentChains } = require("../helper-hardhat-config")
 const { verify } = require("../utils/verify")
-const { uploadToStorage } = require("../utils/uploadToStorage")
+const { uploadSbtToStorage } = require("../utils/uploadToStorage")
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deploy, log } = deployments
@@ -9,7 +9,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     const chainId = network.config.chainId
 
     const args = []
-    const soulboundToken = await deploy("SoulboundToken", {
+    const tenantSoulboundToken = await deploy("TenantSoulboundToken", {
         from: deployer,
         args: args,
         log: true,
@@ -20,7 +20,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         await verify(soulboundToken.address, args)
     }
 
-    // const result = await uploadToStorage("utils/house.jpeg", "name", "address")
+    // const result = await uploadSbtToStorage("name")
     // console.log(result) //returns TokenURI. We need this URI to mint NFT
 }
-module.exports.tags = ["nft"]
+module.exports.tags = ["sbt"]

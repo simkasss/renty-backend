@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 error TenantSoulboundToken__NotOwner();
 error TenantSoulboundToken__CantBeTransferred();
 
-contract TenantSoulboundToken is ERC721, Ownable {
+contract TenantSoulboundToken is ERC721URIStorage {
     uint256 private s_tokenCounter;
     mapping(uint256 => address) private tokenIdToOwner;
     event SBTMinted(address minter, uint256 tokenId);
@@ -37,7 +36,7 @@ contract TenantSoulboundToken is ERC721, Ownable {
         } // Soulbound token cannot be transferred, it can only be burned by the token owner.
     }
 
-    function _burn(uint256 tokenId) internal override(ERC721) {
+    function _burn(uint256 tokenId) internal override(ERC721URIStorage) {
         super._burn(tokenId);
     }
 }
