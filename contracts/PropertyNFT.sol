@@ -23,7 +23,7 @@ contract PropertyNft is ERC721URIStorage {
         _setTokenURI(tokenId, tokenUri);
         tokenIdToOwner[tokenId] = owner;
         emit NftMinted(owner, tokenId);
-        s_tokenCounter = s_tokenCounter + 1;
+        s_tokenCounter++;
         return tokenId;
     }
 
