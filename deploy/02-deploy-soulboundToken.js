@@ -20,6 +20,6 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         await verify(tenantSoulboundToken.address, args)
     }
 
-    const result = await uploadSbtToStorage("name")
+    //const result = await uploadSbtToStorage("name")
 }
-module.exports.tags = ["sbt"]
+module.exports.tags = ["all", "sbt"]

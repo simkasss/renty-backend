@@ -19,7 +19,7 @@ const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY
 const REPORT_GAS = process.env.REPORT_GAS
 
 module.exports = {
-    defaultNetwork: "sepolia",
+    defaultNetwork: "hardhat",
     networks: {
         hardhat: {
             chainId: 31337,

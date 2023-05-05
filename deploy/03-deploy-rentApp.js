@@ -19,4 +19,4 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         await verify(rentApp.address, args)
     }
 }
-module.exports.tags = ["rentApp"]
+module.exports.tags = ["all", "rentApp"]

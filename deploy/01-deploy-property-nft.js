@@ -20,6 +20,6 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         await verify(propertyNft.address, args)
     }
 
-    const result = await uploadPropertyNftToStorage("name", "address", "LT")
+    //const result = await uploadPropertyNftToStorage("name", "address", "LT")
 }
-module.exports.tags = ["nft"]
+module.exports.tags = ["all", "nft"]

@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 error TenantSoulboundToken__NotOwner();
-error TenantSoulboundToken__CantBeTransferred();
+error TenantSoulboundToken__CantBeTransfered();
 
 contract TenantSoulboundToken is ERC721URIStorage {
     uint256 private s_tokenCounter;
@@ -15,7 +15,6 @@ contract TenantSoulboundToken is ERC721URIStorage {
         s_tokenCounter = 0;
     }
 
-    //WHY THIS FUNCTION DOESNT WORK?
     function mintSBT(address owner, string memory tokenUri) public returns (uint256) {
         uint256 tokenId = s_tokenCounter;
         _safeMint(owner, tokenId);
@@ -35,7 +34,7 @@ contract TenantSoulboundToken is ERC721URIStorage {
 
     function _beforeTokenTransfer(address from, address to, uint256, uint256) internal view override {
         if (from != address(0) && to != address(0)) {
-            revert TenantSoulboundToken__CantBeTransferred();
+            revert TenantSoulboundToken__CantBeTransfered();
         } // Soulbound token cannot be transferred, it can only be burned by the token owner.
     }
 
@@ -45,5 +44,9 @@ contract TenantSoulboundToken is ERC721URIStorage {
 
     function getTokenCounter() public view returns (uint256) {
         return s_tokenCounter;
+    }
+
+    function getTokenOwner(uint256 _tokenId) public view returns (address) {
+        return tokenIdToOwner[_tokenId];
     }
 }
