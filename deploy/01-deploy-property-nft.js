@@ -15,12 +15,11 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         log: true,
         waitConfirmations: network.config.blockConfirmations || 1,
     })
-    if (!developmentChains.includes(network.name) && process.env.POLYGONSCAN_API_KEY) {
+    if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...")
         await verify(propertyNft.address, args)
     }
 
-    // const result = await uploadPropertyNftToStorage("name", "address", "LT")
-    // console.log(result) //returns TokenURI. We need this URI to mint NFT
+    const result = await uploadPropertyNftToStorage("name", "address", "LT")
 }
-module.exports.tags = ["propertyNft"]
+module.exports.tags = ["nft"]

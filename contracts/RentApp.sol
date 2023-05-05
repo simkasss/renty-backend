@@ -2,7 +2,7 @@
 the creation, signing, storage, the payment of rent and the holding of security deposits in escrow.*/
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.7;
 
 import "./PropertyNFT.sol";
 import "./TenantSoulboundToken.sol";
@@ -19,12 +19,15 @@ error RentApp__TerminationFailed(address caller, uint256 propertyNftId);
 error RentApp__InvalidRentContract();
 error RentApp__PropertyIsNotListed();
 error RentApp__AlreadyHasSBT(address caller);
+error RentApp_UserAlreadyExists();
+error RentApp_UsernameIsTaken();
+error RentApp__OwnerCantBeTenant();
 
 contract RentApp {
     PropertyNft public propertyNFT;
     TenantSoulboundToken public tenantSoulboundToken;
-    address public propertyNftContractAddress;
-    address public tenantSoulboundContractAddress;
+    address private propertyNftContractAddress;
+    address private tenantSoulboundContractAddress;
     using EnumerableSet for EnumerableSet.UintSet;
 
     enum RentContractStatus {
@@ -32,10 +35,21 @@ contract RentApp {
         Confirmed,
         Canceled
     }
+    enum UserType {
+        Landlord,
+        Tenant
+    }
+    struct User {
+        address wallet;
+        string name;
+        string username;
+        UserType usertype;
+    }
+
     struct RentContract {
         uint256 id;
         uint256 propertyNftId;
-        Tenant tenant;
+        uint256 tenantSbtId;
         string rentalTerm;
         uint256 rentalPrice;
         uint256 depositAmount;
@@ -55,7 +69,8 @@ contract RentApp {
         uint256 depositAmount;
         string hashOfRentalAggreement;
         uint256 rentContractsAccepted;
-        RentContract rentContract; // if a Property has RentContract it is rented, if not it is vacant.
+        bool isRented;
+        uint256 rentContractId;
     }
     struct Tenant {
         uint256 sbtId; //address lives on the SBT
@@ -72,22 +87,25 @@ contract RentApp {
     event RentContractConfirmed(uint256 indexed propertyTokenId, uint256 indexed rentContractId);
     event SecurityDepositTransfered(uint256 indexed propertyNftId, uint256 indexed rentContractIdd);
     event RentPriceTransfered(uint256 indexed propertyNftId, uint256 indexed rentContractId);
+    event UserCreated(address indexed user, string indexed username);
 
     EnumerableSet.UintSet private listedProperties;
     uint256 public numberOfProperties;
     uint256 public numberOfTenants;
     uint256 public numberOfContracts;
 
-    mapping(uint256 => address) private nftTokenIdToOwner; //tokenId => Owner
-    mapping(uint256 => address) private soulboundTokenIdToOwner; //tokenId => Owner
-    mapping(uint256 => Property) private tokenIdToProperty; //tokenId => Property
-    mapping(uint256 => Tenant) private tokenIdToTenant; //tokenId => Tenant
-    mapping(address => bool) private ownsTSBT;
-    mapping(uint256 => RentContract) private rentContractIdToRentContract;
-    mapping(uint256 => RentContract[]) private nftTokenIdToContracts;
-    mapping(uint256 => uint256) private nftTokenIdToDeposit;
-    mapping(uint256 => uint256) private nftTokenIdToBalance;
-    mapping(uint256 => bool) private rentContractHasDisputes;
+    mapping(uint256 => address) public nftTokenIdToOwner; //tokenId => Owner
+    mapping(uint256 => address) public soulboundTokenIdToOwner; //tokenId => Owner
+    mapping(uint256 => Property) public tokenIdToProperty; //tokenId => Property
+    mapping(uint256 => Tenant) public tokenIdToTenant; //tokenId => Tenant
+    mapping(address => bool) public ownsTSBT;
+    mapping(uint256 => RentContract) public rentContractIdToRentContract;
+    mapping(uint256 => RentContract[]) public nftTokenIdToContracts;
+    mapping(uint256 => uint256) public nftTokenIdToDeposit;
+    mapping(uint256 => uint256) public nftTokenIdToBalance;
+    mapping(uint256 => bool) public rentContractHasDisputes;
+    mapping(address => string) public usernames;
+    mapping(string => User) public users;
 
     constructor(address _propertyNftContractAddress, address _tenantSoulboundContractAddress) {
         propertyNftContractAddress = _propertyNftContractAddress;
@@ -138,6 +156,23 @@ contract RentApp {
         _;
     }
 
+    function signup(string memory _username, string memory _name, UserType _usertype) public {
+        if (bytes(usernames[msg.sender]).length != 0) {
+            revert RentApp_UserAlreadyExists();
+        }
+        if (users[_username].wallet != address(0)) {
+            revert RentApp_UsernameIsTaken();
+        }
+        User storage user = users[_username];
+        user.wallet = msg.sender;
+        user.name = _name;
+        user.username = _username;
+        user.usertype = _usertype;
+
+        usernames[msg.sender] = _username;
+        emit UserCreated(msg.sender, _username);
+    }
+
     function mintPropertyNFT(string memory _tokenUri) public returns (uint256) {
         uint256 tokenId = propertyNFT.mintNft(msg.sender, _tokenUri); //This function should return tokenId
         //How can we get nftaddress?
@@ -165,6 +200,7 @@ contract RentApp {
         property.depositAmount = _depositAmount;
         property.hashOfRentalAggreement = _hash;
         property.rentContractsAccepted = 0;
+        property.isRented = false;
         numberOfProperties++;
         listedProperties.add(_propertyNftId);
         emit PropertyListed(msg.sender, _propertyNftId);
@@ -218,11 +254,15 @@ contract RentApp {
         if (!listedProperties.contains(_propertyNftId)) {
             revert RentApp__PropertyIsNotListed();
         }
+        if (msg.sender == tokenIdToProperty[_propertyNftId].owner) {
+            revert RentApp__OwnerCantBeTenant();
+        }
+
         uint256 rentContractId = numberOfContracts;
         RentContract storage rentContract = rentContractIdToRentContract[rentContractId];
         rentContract.id = rentContractId;
         rentContract.propertyNftId = tokenIdToProperty[_propertyNftId].propertyNftId;
-        rentContract.tenant = tokenIdToTenant[_tenantTokenId];
+        rentContract.tenantSbtId = tokenIdToTenant[_tenantTokenId].sbtId;
         rentContract.rentalTerm = _rentalTerm;
         rentContract.rentalPrice = _rentalPrice;
         rentContract.depositAmount = _depositAmount;
@@ -230,8 +270,8 @@ contract RentApp {
         rentContract.daysOfApplicationValidity = _days; // How to write a code, that after these days status would change? chainlink keepers would cost
         rentContract.status = RentContractStatus.Waiting;
         rentContract.propertyRentContractsAccepted = tokenIdToProperty[_propertyNftId].rentContractsAccepted;
-        numberOfContracts++;
         nftTokenIdToContracts[_propertyNftId].push(rentContract);
+        numberOfContracts++;
         emit RentContractCreated(_tenantTokenId, rentContractId);
     }
 
@@ -244,7 +284,8 @@ contract RentApp {
         }
         tokenIdToProperty[_propertyNftId].rentContractsAccepted++;
         rentContractIdToRentContract[_rentContractId].status = RentContractStatus.Confirmed;
-        tokenIdToProperty[_propertyNftId].rentContract = rentContractIdToRentContract[_rentContractId];
+        tokenIdToProperty[_propertyNftId].rentContractId = rentContractIdToRentContract[_rentContractId].id;
+        tokenIdToProperty[_propertyNftId].isRented = true;
         emit RentContractConfirmed(_propertyNftId, _rentContractId);
     } // ALL OTHER APPLICATONS SHOULD BE CANCELED, SHOW THIS IN UI
 
@@ -292,9 +333,9 @@ contract RentApp {
 
     function terminateAgreement(uint256 _propertyNftId, uint256 _tenantTokenId, uint256 _rentContractId) external {
         if (msg.sender == nftTokenIdToOwner[_propertyNftId] || msg.sender == soulboundTokenIdToOwner[_tenantTokenId]) {
-            if (_tenantTokenId == rentContractIdToRentContract[_rentContractId].tenant.sbtId) {
+            if (_tenantTokenId == rentContractIdToRentContract[_rentContractId].tenantSbtId) {
                 rentContractIdToRentContract[_rentContractId].status = RentContractStatus.Canceled;
-                delete tokenIdToProperty[_propertyNftId].rentContract;
+                tokenIdToProperty[_propertyNftId].rentContractId = 0;
                 rentContractHasDisputes[_rentContractId] = true; // automatically create a dispute
                 // implementation of tenant rent history update:
                 tokenIdToTenant[_tenantTokenId].rentHistory.push(rentContractIdToRentContract[_rentContractId]);

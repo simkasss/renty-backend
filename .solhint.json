@@ -1,7 +1,12 @@
 {
-    "extends": "solhint:recommended",
-    "rules": {
-      "compiler-version": ["error", "^0.8.0"],
-      "func-visibility": ["warn", { "ignoreConstructors": true }]
-    }
+  "extends": "solhint:recommended",
+  "rules": {
+    "compiler-version": ["error", "^0.8.0"],
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "indent": ["error", 4],
+    "no-unused-vars": "error",
+    "avoid-tx-origin": "error",
+    "avoid-throw": "error",
+    "avoid-suicide": "error"
   }
+}

@@ -1,9 +1,8 @@
 //  This contract will allow to mint NFTs that represents properties.
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-
-pragma solidity ^0.8.7;
 
 contract PropertyNft is ERC721URIStorage {
     string[] internal s_propertyTokenUris; //IPFS URI
