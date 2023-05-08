@@ -3,27 +3,27 @@ require("dotenv").config()
 const fs = require("fs")
 
 const frontEndContractsFile = "../rentdapp-frontend/constants/networkMapping.json"
-//const frontEndAbiLocation = "../rentdapp-frontend/constants/"
+const frontEndAbiLocation = "../rentdapp-frontend/constants/"
 
 module.exports = async () => {
     if (process.env.UPDATE_FRONT_END) {
-        console.log("updating front end...")
+        console.log("Loading addresses and abi to the front end directory...")
         await updateContractAddresses()
-        //await updateAbi()
-        console.log("Frontend updated.")
+        await updateAbi()
+        console.log("Loaded to the front end directory.")
     }
 }
 
-// async function updateAbi() {
-//     const rentApp = await ethers.getContract("RentApp")
-//     fs.writeFileSync(`${frontEndAbiLocation}RentApp.json`, rentApp.interface.format(ethers.utils.FormatTypes.json))
+async function updateAbi() {
+    const rentApp = await ethers.getContract("RentApp")
+    fs.writeFileSync(`${frontEndAbiLocation}RentApp.json`, rentApp.interface.format(ethers.utils.FormatTypes.json))
 
-//     const propertyNft = await ethers.getContract("PropertyNft")
-//     fs.writeFileSync(`${frontEndAbiLocation}PropertyNft.json`, propertyNft.interface.format(ethers.utils.FormatTypes.json))
+    const propertyNft = await ethers.getContract("PropertyNft")
+    fs.writeFileSync(`${frontEndAbiLocation}PropertyNft.json`, propertyNft.interface.format(ethers.utils.FormatTypes.json))
 
-//     const tenantSoulboundToken = await ethers.getContract("TenantSoulboundToken")
-//     fs.writeFileSync(`${frontEndAbiLocation}TenantSoulboundToken.json`, tenantSoulboundToken.interface.format(ethers.utils.FormatTypes.json))
-// }
+    const tenantSoulboundToken = await ethers.getContract("TenantSoulboundToken")
+    fs.writeFileSync(`${frontEndAbiLocation}TenantSoulboundToken.json`, tenantSoulboundToken.interface.format(ethers.utils.FormatTypes.json))
+}
 
 async function updateContractAddresses() {
     const chainId = network.config.chainId.toString()

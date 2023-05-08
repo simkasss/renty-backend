@@ -94,10 +94,11 @@ contract RentApp {
     uint256 public numberOfTenants;
     uint256 public numberOfContracts;
 
-    mapping(uint256 => address) public nftTokenIdToOwner; //tokenId => Owner
-    mapping(uint256 => address) public soulboundTokenIdToOwner; //tokenId => Owner
-    mapping(uint256 => Property) public tokenIdToProperty; //tokenId => Property
-    mapping(uint256 => Tenant) public tokenIdToTenant; //tokenId => Tenant
+    mapping(uint256 => address) public nftTokenIdToOwner;
+    mapping(address => uint256[]) public ownerToNftTokenIds;
+    mapping(uint256 => address) public soulboundTokenIdToOwner;
+    mapping(uint256 => Property) public tokenIdToProperty;
+    mapping(uint256 => Tenant) public tokenIdToTenant;
     mapping(address => bool) public ownsTSBT;
     mapping(uint256 => RentContract) public rentContractIdToRentContract;
     mapping(uint256 => RentContract[]) public nftTokenIdToContracts;
@@ -177,6 +178,7 @@ contract RentApp {
         uint256 tokenId = propertyNFT.mintNft(msg.sender, _tokenUri); //This function should return tokenId
         //How can we get nftaddress?
         nftTokenIdToOwner[tokenId] = msg.sender;
+        ownerToNftTokenIds[msg.sender].push(tokenId);
         emit PropertyNFTminted(msg.sender, tokenId);
         return tokenId;
     }
@@ -203,6 +205,7 @@ contract RentApp {
         property.isRented = false;
         numberOfProperties++;
         listedProperties.add(_propertyNftId);
+
         emit PropertyListed(msg.sender, _propertyNftId);
     }
 
@@ -347,11 +350,28 @@ contract RentApp {
     }
 
     // Getters
-    function getListedProperties() public view returns (uint256[] memory) {
+    function getListedPropertiesIds() public view returns (uint256[] memory) {
         uint256[] memory ids = new uint256[](listedProperties.length());
         for (uint256 i = 0; i < listedProperties.length(); i++) {
             ids[i] = listedProperties.at(i);
         }
         return ids;
-    } // It looks expensive
+    }
+
+    // I need a function to get all listed properties, but it looks expensive
+    function getListedProperties() public view returns (Property[] memory properties) {
+        uint256[] memory listedPropertiesIds = getListedPropertiesIds();
+        properties = new Property[](listedPropertiesIds.length);
+        for (uint256 i = 1; i <= listedPropertiesIds.length; i++) {
+            properties[i - 1] = tokenIdToProperty[listedPropertiesIds[i - 1]];
+        }
+    }
+
+    function getUserProperties(address user) public view returns (Property[] memory properties) {
+        uint256[] memory userProperties = ownerToNftTokenIds[user];
+        properties = new Property[](userProperties.length);
+        for (uint256 i = 1; i <= userProperties.length; i++) {
+            properties[i - 1] = tokenIdToProperty[userProperties[i - 1]];
+        }
+    }
 }

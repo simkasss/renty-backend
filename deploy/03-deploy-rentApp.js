@@ -7,7 +7,10 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deployer } = await getNamedAccounts()
     const chainId = network.config.chainId
 
-    const args = ["0xc25b01a423aA49883bC8d62e0a67915AB198E645", "0x24C9FE3317575bf4E7A2DD79643D2dF11caBF273"] // propertyNftContractAddress and tenantSoulboundContractAddress
+    const propertyNft = await ethers.getContract("PropertyNft")
+    const tenantSoulboundToken = await ethers.getContract("TenantSoulboundToken")
+
+    const args = [propertyNft.address, tenantSoulboundToken.address] // propertyNftContractAddress and tenantSoulboundContractAddress
     const rentApp = await deploy("RentApp", {
         from: deployer,
         args: args,
