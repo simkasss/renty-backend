@@ -31,8 +31,7 @@ async function uploadPropertyNftToStorage(name, address, countryCode) {
         // Custom - if LT, tai registrų centro objekto numeris
     }
     const metadata = await nftstorage.store(nft)
-    console.log("NFT data stored!")
-    console.log("Metadata URI: ", metadata.url)
+    console.log("NFT data stored! Metadata URI: ", metadata.url)
 
     return metadata.url //returns TokenURI (ipfs://)
 }
@@ -47,8 +46,7 @@ async function uploadSbtToStorage(name) {
         image,
     }
     const metadata = await nftstorage.store(nft)
-    console.log("Soulbound token data stored!")
-    console.log("Metadata URI: ", metadata.url)
+    console.log("Soulbound token data stored! Metadata URI: ", metadata.url)
     return metadata.url //returns TokenURI (ipfs://)
 }
 // A helper read a file from a location on disk and return a File object.

@@ -10,7 +10,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     const propertyNft = await ethers.getContract("PropertyNft")
     const tenantSoulboundToken = await ethers.getContract("TenantSoulboundToken")
 
-    const args = [propertyNft.address, tenantSoulboundToken.address] // propertyNftContractAddress and tenantSoulboundContractAddress
+    const args = [propertyNft.address, tenantSoulboundToken.address, "0x694AA1769357215DE4FAC081bf1f309aDC325306"] // propertyNftContractAddress and tenantSoulboundContractAddress
     const rentApp = await deploy("RentApp", {
         from: deployer,
         args: args,
