@@ -41,7 +41,11 @@ module.exports = {
         },
     },
     solidity: {
-        compilers: [{ version: "0.8.7" }, { version: "0.6.6" }],
+        compilers: [{ version: "0.8.18" }, { version: "0.6.6" }],
+        settings: {
+            viaIR: true,
+            optimizer: { enabled: true, runs: 1 },
+        },
     },
     etherscan: {
         apiKey: {
@@ -67,7 +71,7 @@ module.exports = {
     },
     contractSizer: {
         alphaSort: true,
-        disambiguatePaths: true,
+        disambiguatePaths: false,
         runOnCompile: true,
         strict: true,
         only: [],

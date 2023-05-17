@@ -24,6 +24,6 @@
     "solidity-coverage": "^0.8.2"
   },
   "dependencies": {
-    "solc": "^0.8.20"
+    "solc": "^0.8.18"
   }
 }

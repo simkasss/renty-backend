@@ -15,27 +15,44 @@ module.exports = async () => {
 }
 
 async function updateAbi() {
-    const rentApp = await ethers.getContract("RentApp")
-    fs.writeFileSync(`${frontEndAbiLocation}RentApp.json`, rentApp.interface.format(ethers.utils.FormatTypes.json))
+    const mainContract = await ethers.getContract("MainContract")
+    fs.writeFileSync(`${frontEndAbiLocation}MainContract.json`, mainContract.interface.format(ethers.utils.FormatTypes.json))
 
     const propertyNft = await ethers.getContract("PropertyNft")
     fs.writeFileSync(`${frontEndAbiLocation}PropertyNft.json`, propertyNft.interface.format(ethers.utils.FormatTypes.json))
 
-    const tenantSoulboundToken = await ethers.getContract("TenantSoulboundToken")
-    fs.writeFileSync(`${frontEndAbiLocation}TenantSoulboundToken.json`, tenantSoulboundToken.interface.format(ethers.utils.FormatTypes.json))
+    const tenantManager = await ethers.getContract("TenantManager")
+    fs.writeFileSync(`${frontEndAbiLocation}TenantManager.json`, tenantManager.interface.format(ethers.utils.FormatTypes.json))
+
+    const transfersAndDisputes = await ethers.getContract("TransfersAndDisputes")
+    fs.writeFileSync(`${frontEndAbiLocation}TransfersAndDisputes.json`, transfersAndDisputes.interface.format(ethers.utils.FormatTypes.json))
 }
 
 async function updateContractAddresses() {
     const chainId = network.config.chainId.toString()
-    const rentApp = await ethers.getContract("RentApp")
+    const mainContract = await ethers.getContract("MainContract")
+    const tenantManager = await ethers.getContract("TenantManager")
+    const transfersAndDisputes = await ethers.getContract("TransfersAndDisputes")
+
     const contractAddresses = JSON.parse(fs.readFileSync(frontEndContractsFile, "utf8"))
     if (chainId in contractAddresses) {
-        if (!contractAddresses[chainId]["RentApp"].includes(rentApp.address)) {
-            contractAddresses[chainId]["RentApp"].push(rentApp.address)
+        if (!contractAddresses[chainId]["MainContract"].includes(mainContract.address)) {
+            contractAddresses[chainId]["MainContract"].push(mainContract.address)
+        }
+        if (!contractAddresses[chainId]["TenantManager"].includes(tenantManager.address)) {
+            contractAddresses[chainId]["TenantManager"].push(tenantManager.address)
+        }
+        if (!contractAddresses[chainId]["TransfersAndDisputes"].includes(transfersAndDisputes.address)) {
+            contractAddresses[chainId]["TransfersAndDisputes"].push(transfersAndDisputes.address)
         }
     } else {
-        contractAddresses[chainId] = { RentApp: [rentApp.address] }
+        contractAddresses[chainId] = {
+            MainContract: [mainContract.address],
+            TenantManager: [tenantManager.address],
+            TransfersAndDisputes: [transfersAndDisputes.address],
+        }
     }
+
     fs.writeFileSync(frontEndContractsFile, JSON.stringify(contractAddresses))
 }
 module.exports.tags = ["all", "frontend"]

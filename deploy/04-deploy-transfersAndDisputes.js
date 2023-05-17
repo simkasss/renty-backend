@@ -1,15 +1,17 @@
-const { network, getNamedAccounts, deployments } = require("hardhat")
+const { network, getNamedAccounts, deployments, ethers } = require("hardhat")
 const { developmentChains } = require("../helper-hardhat-config")
 const { verify } = require("../utils/verify")
-const { uploadSbtToStorage } = require("../utils/uploadToStorage")
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deploy, log } = deployments
     const { deployer } = await getNamedAccounts()
     const chainId = network.config.chainId
 
-    const args = []
-    const tenantSoulboundToken = await deploy("TenantSoulboundToken", {
+    const mainContract = await ethers.getContract("MainContract")
+    const tenantManager = await ethers.getContract("TenantManager")
+
+    const args = [mainContract.address, tenantManager.address] // propertyNftContractAddress and tenantSoulboundContractAddress
+    const transfersAndDisputes = await deploy("TransfersAndDisputes", {
         from: deployer,
         args: args,
         log: true,
@@ -17,9 +19,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     })
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...")
-        await verify(tenantSoulboundToken.address, args)
+        await verify(transfersAndDisputes.address, args)
     }
-
-    //const result = await uploadSbtToStorage("name")
 }
-module.exports.tags = ["all", "sbt"]
+module.exports.tags = ["all", "transfersAndDisputes"]
