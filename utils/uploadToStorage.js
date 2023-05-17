@@ -3,7 +3,6 @@ on decentralized file storage networks such as IPFS (InterPlanetary File System)
    To store an NFT on NFT.Storage:
 1. Use NFT.Storage API to upload the NFT file to IPFS 
 2. Save the returned IPFS hash as the token URI.*/
-
 // Import the NFTStorage class and File constructor from the 'nft.storage' package
 const { NFTStorage, File } = require("nft.storage")
 // The 'mime' npm package helps us set the correct file type on our File objects
@@ -17,26 +16,39 @@ const NFTSTORAGE_API_KEY = process.env.NFTSTORAGE_API_KEY
 
 //SOURCE: https://nft.storage/docs/how-to/mint-erc-1155/
 
-async function uploadToStorage(imagesPath, name, address) {
+async function uploadPropertyNftToStorage(name, address, countryCode) {
     // create a new NFTStorage client using API key
     const nftstorage = new NFTStorage({ token: NFTSTORAGE_API_KEY })
-    // load the file from disk
-    const image = await fileFromPath(imagesPath)
-    // call client.store, passing in the image & metadata
+    const image = await fileFromPath("utils/house.jpeg")
+
+    // call client.store, passing in the metadata
     const nft = {
         name,
+        description: "NFT that represents a property",
+        image,
         address,
-        // Country code - LT
+        countryCode,
         // Custom - if LT, tai registrų centro objekto numeris
     }
-
-    
     const metadata = await nftstorage.store(nft)
-    console.log("NFT data stored!")
-    console.log("Metadata URI: ", metadata.url)
+    console.log("NFT data stored! Metadata URI: ", metadata.url)
+
     return metadata.url //returns TokenURI (ipfs://)
 }
-
+async function uploadSbtToStorage(name) {
+    // create a new NFTStorage client using API key
+    const nftstorage = new NFTStorage({ token: NFTSTORAGE_API_KEY })
+    const image = await fileFromPath("utils/tenant.jpeg")
+    // call client.store, passing in the metadata
+    const nft = {
+        name,
+        description: "Soulbound Token that represents a tenant",
+        image,
+    }
+    const metadata = await nftstorage.store(nft)
+    console.log("Soulbound token data stored! Metadata URI: ", metadata.url)
+    return metadata.url //returns TokenURI (ipfs://)
+}
 // A helper read a file from a location on disk and return a File object.
 async function fileFromPath(filePath) {
     const content = await fs.promises.readFile(filePath)
@@ -55,5 +67,6 @@ async function getExampleImage() {
 }
 
 module.exports = {
-    uploadToStorage,
+    uploadPropertyNftToStorage,
+    uploadSbtToStorage,
 }

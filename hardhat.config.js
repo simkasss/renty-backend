@@ -4,13 +4,13 @@ require("@nomiclabs/hardhat-etherscan")
 require("dotenv").config()
 require("solidity-coverage")
 require("hardhat-deploy")
-
+require("hardhat-contract-sizer")
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY
-const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL
+const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL
 const POLYGON_MAINNET_RPC_URL = process.env.POLYGON_MAINNET_RPC_URL
 const PRIVATE_KEY = process.env.PRIVATE_KEY
 
@@ -27,10 +27,10 @@ module.exports = {
         localhost: {
             chainId: 31337,
         },
-        goerli: {
-            url: GOERLI_RPC_URL,
+        sepolia: {
+            url: SEPOLIA_RPC_URL,
             accounts: [PRIVATE_KEY],
-            chainId: 5,
+            chainId: 11155111,
             blockConfirmations: 6,
         },
         polygon: {
@@ -41,11 +41,15 @@ module.exports = {
         },
     },
     solidity: {
-        compilers: [{ version: "0.8.8" }, { version: "0.6.6" }, { version: "0.8.0" }],
+        compilers: [{ version: "0.8.18" }, { version: "0.6.6" }],
+        settings: {
+            viaIR: true,
+            optimizer: { enabled: true, runs: 1 },
+        },
     },
     etherscan: {
         apiKey: {
-            goerli: ETHERSCAN_API_KEY,
+            sepolia: ETHERSCAN_API_KEY,
             polygon: POLYGONSCAN_API_KEY,
         },
     },
@@ -64,5 +68,12 @@ module.exports = {
     },
     mocha: {
         timeout: 500000,
+    },
+    contractSizer: {
+        alphaSort: true,
+        disambiguatePaths: false,
+        runOnCompile: true,
+        strict: true,
+        only: [],
     },
 }
