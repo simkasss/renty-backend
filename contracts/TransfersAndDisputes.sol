@@ -5,9 +5,13 @@ import "./MainContract.sol";
 import "./TenantManager.sol";
 
 // SECURITY DEPOSIT MUST BE TRANSFERED IN 5 DAYS AFTER CONFIRMATION, ELSE CONTRACT STATUS IS CANCELED
-error RentApp__NotEnoughAmount();
-error RentApp__WithdrawFailed();
-error RentApp__DisputeCreationFailed(address caller, uint256 propertyNftId);
+error TransfersAndDisputes__NotEnoughAmount();
+error TransfersAndDisputes__InvalidRentContract();
+error TransfersAndDisputes__WithdrawFailed();
+error TransfersAndDisputes__AllowDepositReleaseFailed();
+error TransfersAndDisputes__DisputeCreationFailed();
+error TransfersAndDisputes__TransferFailed();
+error TransfersAndDisputes__SolveDisputeFailed();
 
 contract TransfersAndDisputes {
     MainContract public mainContract;
@@ -56,13 +60,14 @@ contract TransfersAndDisputes {
         MainContract.RentContract memory rentContract = mainContract.getRentContract(_rentContractId);
         MainContract.Property memory property = mainContract.getProperty(_propertyNftId);
         if (rentContract.status != MainContract.RentContractStatus.Confirmed || rentContract.propertyNftId != property.propertyNftId) {
-            revert RentApp__InvalidRentContract();
+            revert TransfersAndDisputes__InvalidRentContract();
         }
         if (msg.value < rentContract.depositAmount) {
-            revert RentApp__NotEnoughAmount();
+            revert TransfersAndDisputes__NotEnoughAmount();
         }
+
         rentContractIdToAllowedDepositRelease[_rentContractId] = false;
-        rentContractIdToDeposit[_rentContractId] = rentContractIdToDeposit[_rentContractId] + msg.value;
+        rentContractIdToDeposit[_rentContractId] += msg.value;
         uint256 paymentId = numberOfPayments;
         Payment storage payment = paymentIdToPayment[paymentId];
         payment.id = paymentId;
@@ -76,13 +81,14 @@ contract TransfersAndDisputes {
         MainContract.RentContract memory rentContract = mainContract.getRentContract(_rentContractId);
         MainContract.Property memory property = mainContract.getProperty(_propertyNftId);
         if (rentContract.status != MainContract.RentContractStatus.Confirmed || rentContract.propertyNftId != property.propertyNftId) {
-            revert RentApp__InvalidRentContract();
+            revert TransfersAndDisputes__InvalidRentContract();
         }
         if (msg.value < rentContract.rentalPrice) {
-            revert RentApp__NotEnoughAmount();
+            revert TransfersAndDisputes__NotEnoughAmount();
         }
+
         nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
-        rentContractIdToAmountOfPaidRent[_rentContractId] = rentContractIdToAmountOfPaidRent[_rentContractId] + msg.value;
+        rentContractIdToAmountOfPaidRent[_rentContractId] += msg.value;
         uint256 paymentId = numberOfPayments;
         Payment storage payment = paymentIdToPayment[paymentId];
         payment.id = paymentId;
@@ -96,12 +102,12 @@ contract TransfersAndDisputes {
         uint256 proceeds = nftTokenIdToBalance[_propertyNftId];
         address owner = mainContract.getPropertyOwner(_propertyNftId);
         if (proceeds <= 0 || msg.sender != owner) {
-            revert RentApp__WithdrawFailed();
+            revert TransfersAndDisputes__WithdrawFailed();
         }
         nftTokenIdToBalance[_propertyNftId] = 0;
         (bool success, ) = payable(msg.sender).call{value: proceeds}("");
         if (!success) {
-            revert RentApp__WithdrawFailed();
+            revert TransfersAndDisputes__WithdrawFailed();
         }
     }
 
@@ -112,7 +118,7 @@ contract TransfersAndDisputes {
         if (msg.sender == owner) {
             rentContractIdToAllowedDepositRelease[_rentContractId] = true;
         } else {
-            revert RentApp__AllowDepositReleaseFailed(msg.sender, _rentContractId);
+            revert TransfersAndDisputes__AllowDepositReleaseFailed();
         }
     }
 
@@ -128,10 +134,10 @@ contract TransfersAndDisputes {
             rentContractIdToDeposit[_rentContractId] = 0;
             (bool success, ) = payable(msg.sender).call{value: deposit}("");
             if (!success) {
-                revert RentApp__WithdrawFailed();
+                revert TransfersAndDisputes__WithdrawFailed();
             }
         } else {
-            revert RentApp__WithdrawFailed();
+            revert TransfersAndDisputes__WithdrawFailed();
         }
     }
 
@@ -141,7 +147,7 @@ contract TransfersAndDisputes {
         uint256 tenantId = rentContract.tenantSbtId;
         address owner = mainContract.getPropertyOwner(propertyNftId);
         address tenant = tenantManager.getTokenOwner(tenantId);
-        if (msg.sender == owner || msg.sender == tenant) {
+        if (rentContract.status == MainContract.RentContractStatus.Confirmed && (msg.sender == owner || msg.sender == tenant)) {
             uint256 disputeId = numberOfDisputes;
             Dispute storage dispute = disputeIdToDispute[disputeId];
             dispute.id = disputeId;
@@ -151,7 +157,7 @@ contract TransfersAndDisputes {
             numberOfDisputes++;
             rentContractIdToDisputesIds[_rentContractId].push(dispute.id);
         } else {
-            revert RentApp__DisputeCreationFailed(msg.sender, propertyNftId);
+            revert TransfersAndDisputes__DisputeCreationFailed();
         }
     }
 
@@ -166,35 +172,48 @@ contract TransfersAndDisputes {
         } else if (msg.sender == tenant) {
             disputeIdToDispute[_disputeId].solvedByTenant = true;
         } else {
-            revert RentApp__DisputeCreationFailed(msg.sender, propertyNftId);
+            revert TransfersAndDisputes__SolveDisputeFailed();
         }
     }
 
     function getDeposit(uint256 _rentContractId) public view returns (uint256 transferedDepositAmount) {
         transferedDepositAmount = rentContractIdToDeposit[_rentContractId];
-        return transferedDepositAmount;
     }
 
     function getAmountOfPaidRent(uint256 _rentContractId) public view returns (uint256 rentPaid) {
         rentPaid = rentContractIdToAmountOfPaidRent[_rentContractId];
-        return rentPaid;
     }
 
     function getRentContractPaymentHistory(uint256 _rentContractId) public view returns (Payment[] memory paymenthistory) {
         uint256[] memory paymentsIds = rentContractIdToPaymentsIds[_rentContractId];
         paymenthistory = new Payment[](paymentsIds.length);
-        for (uint256 i = 0; i <= paymentsIds.length; i++) {
-            paymenthistory[i] = paymentIdToPayment[paymentsIds[i]];
+        for (uint256 i = 1; i <= paymentsIds.length; i++) {
+            paymenthistory[i - 1] = paymentIdToPayment[paymentsIds[i - 1]];
         }
-        return paymenthistory;
     }
 
     function getRentContractDisputes(uint256 _rentContractId) public view returns (Dispute[] memory disputes) {
         uint256[] memory disputeIds = rentContractIdToDisputesIds[_rentContractId];
         disputes = new Dispute[](disputeIds.length);
-        for (uint256 i = 0; i <= disputeIds.length; i++) {
-            disputes[i] = disputeIdToDispute[disputeIds[i]];
+        for (uint256 i = 1; i <= disputeIds.length; i++) {
+            disputes[i - 1] = disputeIdToDispute[disputeIds[i - 1]];
         }
         return disputes;
+    }
+
+    function getPropertyBalance(uint256 _propertyNftId) public view returns (uint256) {
+        return nftTokenIdToBalance[_propertyNftId];
+    }
+
+    function depositReleasePermission(uint256 _rentContractId) public view returns (bool) {
+        return rentContractIdToAllowedDepositRelease[_rentContractId];
+    }
+
+    function getPayment(uint256 _paymentId) public view returns (Payment memory payment) {
+        return paymentIdToPayment[_paymentId];
+    }
+
+    function getNumberOfPayments() public view returns (uint256) {
+        return numberOfPayments;
     }
 }

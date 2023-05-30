@@ -36,4 +36,26 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
                   ).to.emit(propertyNft, "NftMinted")
               })
           })
+          describe("getTokenCounter", function () {
+              it("gets token counter", async function () {
+                  const txResponse = await propertyNft.mintNft(
+                      deployer.address,
+                      "ipfs://bafyreiblprd6vxh62izwsruinwj5jcekl7vrpkrfr4kbrldd2mw4ydce3m/metadata.json"
+                  )
+                  await txResponse.wait(1)
+                  const tokenCounter = await propertyNft.getTokenCounter()
+                  assert.equal(tokenCounter.toString(), "1")
+              })
+          })
+          describe("getTokenOwner", function () {
+              it("gets token owner", async function () {
+                  const txResponse = await propertyNft.mintNft(
+                      deployer.address,
+                      "ipfs://bafyreiblprd6vxh62izwsruinwj5jcekl7vrpkrfr4kbrldd2mw4ydce3m/metadata.json"
+                  )
+                  await txResponse.wait(1)
+                  const tokenOwner = await propertyNft.getTokenOwner(0)
+                  assert.equal(tokenOwner, deployer.address)
+              })
+          })
       })
