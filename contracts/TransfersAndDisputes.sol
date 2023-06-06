@@ -41,7 +41,7 @@ contract TransfersAndDisputes {
     uint256 public numberOfPayments;
 
     mapping(uint256 => uint256) public rentContractIdToDeposit;
-    mapping(uint256 => uint256) public nftTokenIdToBalance;
+    mapping(address => uint256) public addressToBalance;
     mapping(uint256 => uint256) public rentContractIdToAmountOfPaidRent;
     mapping(uint256 => uint256[]) public rentContractIdToPaymentsIds;
     mapping(uint256 => uint256[]) public rentContractIdToDisputesIds;
@@ -80,6 +80,7 @@ contract TransfersAndDisputes {
     function transferRent(uint256 _propertyNftId, uint256 _rentContractId) external payable {
         MainContract.RentContract memory rentContract = mainContract.getRentContract(_rentContractId);
         MainContract.Property memory property = mainContract.getProperty(_propertyNftId);
+        address landlord = mainContract.getPropertyOwner(_propertyNftId);
         if (rentContract.status != MainContract.RentContractStatus.Confirmed || rentContract.propertyNftId != property.propertyNftId) {
             revert TransfersAndDisputes__InvalidRentContract();
         }
@@ -87,7 +88,7 @@ contract TransfersAndDisputes {
             revert TransfersAndDisputes__NotEnoughAmount();
         }
 
-        nftTokenIdToBalance[_propertyNftId] = nftTokenIdToBalance[_propertyNftId] + msg.value;
+        addressToBalance[landlord] += msg.value;
         rentContractIdToAmountOfPaidRent[_rentContractId] += msg.value;
         uint256 paymentId = numberOfPayments;
         Payment storage payment = paymentIdToPayment[paymentId];
@@ -98,14 +99,13 @@ contract TransfersAndDisputes {
         rentContractIdToPaymentsIds[_rentContractId].push(paymentId);
     } // If the balance is not enough in the end of the month, a owner should be informed
 
-    function withdrawProceeds(uint256 _propertyNftId) external {
-        uint256 proceeds = nftTokenIdToBalance[_propertyNftId];
-        address owner = mainContract.getPropertyOwner(_propertyNftId);
-        if (proceeds <= 0 || msg.sender != owner) {
+    function withdrawProceeds(address _user, uint256 _amount) external {
+        uint256 proceeds = addressToBalance[_user];
+        if (proceeds < _amount) {
             revert TransfersAndDisputes__WithdrawFailed();
         }
-        nftTokenIdToBalance[_propertyNftId] = 0;
-        (bool success, ) = payable(msg.sender).call{value: proceeds}("");
+        addressToBalance[_user] -= _amount;
+        (bool success, ) = payable(msg.sender).call{value: _amount}("");
         if (!success) {
             revert TransfersAndDisputes__WithdrawFailed();
         }
@@ -201,8 +201,8 @@ contract TransfersAndDisputes {
         return disputes;
     }
 
-    function getPropertyBalance(uint256 _propertyNftId) public view returns (uint256) {
-        return nftTokenIdToBalance[_propertyNftId];
+    function getUserBalance(address _user) public view returns (uint256) {
+        return addressToBalance[_user];
     }
 
     function depositReleasePermission(uint256 _rentContractId) public view returns (bool) {

@@ -46,7 +46,7 @@ contract TenantManager is ERC721URIStorage {
         _burn(tokenId);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256, uint256) internal view override {
+    function _beforeTokenTransfer(address from, address to, uint256, uint256) internal pure override {
         if (from != address(0) && to != address(0)) {
             revert TenantManager__CantBeTransfered();
         } // Soulbound token cannot be transferred, it can only be burned by the token owner.

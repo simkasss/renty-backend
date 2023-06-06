@@ -13,6 +13,7 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
               deployer = accounts[0]
               user = accounts[1]
               user2 = accounts[2]
+
               await deployments.fixture(["all"])
               mainContract = await ethers.getContract("MainContract")
               tenantManager = await ethers.getContract("TenantManager")
@@ -341,10 +342,91 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
               })
           })
           describe("terminateRentContract", function () {
-              it("reverts if function is called not by owner or tenant", async function () {})
-              it("updates rent contract status and resets property current rent contract and tenant current rent contract", async function () {})
-              it("creates a dispute", async function () {})
+              let id, contractId, tenantTokenId, mainContractUserConnected
+              beforeEach(async function () {
+                  id = await mainContract.getNumberOfProperties()
+                  await mainContract.createProperty(
+                      "ipfs://bafyreifm7zw33fcmjt7qdt74lugaphvzsft7rth6ufx6aeqrd7occob4au/metadata.json",
+                      "Ben",
+                      "QmedPszJ62ha2PnB11ngpmEhUSy2Td19Sgcp6NKbxx6AgE"
+                  )
+                  const rentalTerm = 60 * 60 * 24 * 30 //month
+                  await mainContract.listProperty(
+                      "nice flat with a lot of amenities",
+                      id,
+                      rentalTerm,
+                      30,
+                      10,
+                      ["mockPhotoHash1", "mockPhotoHash2"],
+                      "mockHashOfTermsAndconditions"
+                  )
+                  const tenantManagerUserConnected = await ethers.getContract("TenantManager", user)
+                  await tenantManagerUserConnected.mintSBT("ipfs://bafyreiblprd6vxh62izwsruinwj5jcekl7vrpkrfr4kbrldd2mw4ydce3m/metadata.json", "John")
+                  tenantTokenId = await tenantManagerUserConnected.getTokenId(user.address)
+                  const currentTimestamp = new Date().getTime()
+                  const validityTerm = currentTimestamp + 60 * 60 * 24 * 3 //3 days
+                  const startTimestamp = currentTimestamp + 60 * 60 * 24 * 5
+                  mainContractUserConnected = await ethers.getContract("MainContract", user)
+                  await mainContractUserConnected.createRentContract(id, tenantTokenId, rentalTerm, 30, 10, startTimestamp, validityTerm)
+                  const arrayOfPropertyContractsIds = await mainContract.getPropertyContractsIds(id)
+                  contractId = arrayOfPropertyContractsIds[0]
+                  await mainContract.acceptRentContract(id, contractId)
+              })
+              it("reverts if function is called not by owner or tenant", async function () {
+                  const mainContractUser2Connected = await ethers.getContract("MainContract", user2)
+                  await expect(mainContractUser2Connected.terminateRentContract(id, contractId)).to.be.revertedWith("MainContract__CancelFailed")
+              })
+              it("updates rent contract status and resets property current rent contract and tenant current rent contract", async function () {
+                  const propertyBefore = await mainContract.getProperty(id)
+                  const tenantCurrentContractId = await mainContract.getTenantCurrentContractId("0")
+                  const rentContractBefore = await mainContract.getRentContract(contractId)
+                  await mainContractUserConnected.terminateRentContract(id, contractId)
+                  const rentContractAfter = await mainContract.getRentContract(contractId)
+                  const propertyAfter = await mainContract.getProperty(id)
+                  assert.equal(Number(tenantCurrentContractId), Number(contractId))
+                  assert.equal(rentContractBefore.status, 1)
+                  assert.equal(propertyBefore.isRented, true)
+                  assert.equal(Number(propertyBefore.rentContractId), Number(contractId))
+                  assert.equal(rentContractAfter.status, 2)
+                  assert.equal(propertyAfter.isRented, false)
+              })
           })
-          describe("cancelRentApplication", function () {})
-          describe("getETHAmountInUSD", function () {})
+          describe("cancelRentApplication", function () {
+              let id, contractId, tenantTokenId, mainContractUserConnected
+              beforeEach(async function () {
+                  id = await mainContract.getNumberOfProperties()
+                  await mainContract.createProperty(
+                      "ipfs://bafyreifm7zw33fcmjt7qdt74lugaphvzsft7rth6ufx6aeqrd7occob4au/metadata.json",
+                      "Ben",
+                      "QmedPszJ62ha2PnB11ngpmEhUSy2Td19Sgcp6NKbxx6AgE"
+                  )
+                  const rentalTerm = 60 * 60 * 24 * 30 //month
+                  await mainContract.listProperty(
+                      "nice flat with a lot of amenities",
+                      id,
+                      rentalTerm,
+                      30,
+                      10,
+                      ["mockPhotoHash1", "mockPhotoHash2"],
+                      "mockHashOfTermsAndconditions"
+                  )
+                  const tenantManagerUserConnected = await ethers.getContract("TenantManager", user)
+                  await tenantManagerUserConnected.mintSBT("ipfs://bafyreiblprd6vxh62izwsruinwj5jcekl7vrpkrfr4kbrldd2mw4ydce3m/metadata.json", "John")
+                  tenantTokenId = await tenantManagerUserConnected.getTokenId(user.address)
+                  const currentTimestamp = new Date().getTime()
+                  const validityTerm = currentTimestamp + 60 * 60 * 24 * 3 //3 days
+                  const startTimestamp = currentTimestamp + 60 * 60 * 24 * 5
+                  contractId = await mainContract.getNumberOfContracts()
+
+                  mainContractUserConnected = await ethers.getContract("MainContract", user)
+                  await mainContractUserConnected.createRentContract(id, tenantTokenId, rentalTerm, 30, 10, startTimestamp, validityTerm)
+              })
+              it.only("updates rent contract status to canceled", async function () {
+                  const rentContractBefore = await mainContract.getRentContract(contractId)
+                  await mainContractUserConnected.cancelRentApplication(id, contractId)
+                  const rentContractAfter = await mainContract.getRentContract(contractId)
+                  assert.equal(rentContractBefore.status, 0)
+                  assert.equal(rentContractAfter.status, 2)
+              })
+          })
       })

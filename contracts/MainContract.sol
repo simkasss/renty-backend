@@ -84,6 +84,8 @@ contract MainContract {
     mapping(uint256 => uint256[]) sbtTokenIdToRentHistoryIds;
     mapping(uint256 => uint256[]) propertyIdToRentHistoryIds;
     mapping(uint256 => uint256) tenantCurrentContractId;
+    mapping(address => string) addressToEmail;
+    mapping(address => string) addressToPhoneNumber;
 
     constructor(address _propertyNftContractAddress, address _tenantManagerAddress, address _priceFeedAddress) {
         propertyNftContractAddress = _propertyNftContractAddress;
@@ -161,6 +163,11 @@ contract MainContract {
         emit PropertyRemovedFromList(msg.sender, _propertyNftId); //dont delete a property
     }
 
+    function addContactDetails(string memory _email, string memory _phoneNumber) external {
+        addressToEmail[msg.sender] = _email;
+        addressToPhoneNumber[msg.sender] = _phoneNumber;
+    }
+
     function createRentContract(
         uint256 _propertyNftId,
         uint256 _tenantTokenId,
@@ -231,6 +238,7 @@ contract MainContract {
             rentContractIdToRentContract[_rentContractId].status = RentContractStatus.Canceled;
             rentContractIdToRentContract[_rentContractId].expiryTimestamp = block.timestamp;
             tokenIdToProperty[_propertyNftId].rentContractId = 0;
+            tokenIdToProperty[_propertyNftId].isRented = false;
             tenantCurrentContractId[rentContractIdToRentContract[_rentContractId].tenantSbtId] = 0;
         } else {
             revert MainContract__CancelFailed(msg.sender, _propertyNftId);
@@ -251,11 +259,12 @@ contract MainContract {
 
     // Chainlink Price Feeds
     // Network: Sepolia Aggregator: ETH/USD Address: 0x694AA1769357215DE4FAC081bf1f309aDC325306
-    function getETHAmountInUSD(uint256 ethAmount) public view returns (uint256) {
+    function getWEIAmountInUSD(uint256 weiAmount) public view returns (uint256) {
         (, int256 answer, , , ) = priceFeed.latestRoundData();
-        uint256 ethPrice = uint256(answer * 10000000000);
-        uint256 ethAmountInUsd = (ethPrice * ethAmount) / 1000000000000000000;
-        return ethAmountInUsd;
+        uint256 decimals = 8;
+        uint256 ethPrice = uint256(answer);
+        uint256 weiAmountInUsd = (ethPrice * weiAmount) / 10 ** decimals / 10 ** 18;
+        return weiAmountInUsd;
     }
 
     // Getters
@@ -344,6 +353,14 @@ contract MainContract {
             revert MainContract__DoesntHaveCurrentContract();
         }
         return contractId;
+    }
+
+    function getUserEmail(address user) public view returns (string memory) {
+        return addressToEmail[user];
+    }
+
+    function getUserPhoneNumber(address user) public view returns (string memory) {
+        return addressToPhoneNumber[user];
     }
 
     function getNumberOfProperties() public view returns (uint256) {
