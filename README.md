@@ -1,11 +1,16 @@
 
 The frontend repo: **https://github.com/simkasss/renty-frontend**
+
+## Getting Started
 Open the frontend code and run the development server:
+
+```bash
 npm run dev
 # or
 yarn dev
 # or
 pnpm dev
+```
 Open http://localhost:3000 with your browser.
 
 ## Inspiration
