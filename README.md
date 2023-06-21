@@ -1,3 +1,4 @@
+**Decentralized Real Estate Rent Platform**
 
 The frontend repo: **https://github.com/simkasss/renty-frontend**
 
